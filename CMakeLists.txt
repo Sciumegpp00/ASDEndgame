@@ -3,4 +3,7 @@ project(ASDEndgame)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(ASDEndgame main.cpp)
+FILE(GLOB CppSources **/**/*.cpp)
+FILE(GLOB HeadersSources **/**/*.h)
+
+add_executable(ASDEndgame ${HeadersSources} ${CppSources} endgame.cpp)
