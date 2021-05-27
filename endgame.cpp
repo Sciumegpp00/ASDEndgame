@@ -1,20 +1,32 @@
 #include <iostream>
 #include <stdlib.h>
-#include "endgame/endgame.h"
+#include "endgame.h"
 #include <iomanip>
 #include <fstream>
 #include <vector>
 
 // @tocompile /usr/bin/g++ -DEVAL -std=c++11 -O2 -pipe -static -s -o endgame grader.cpp endgame.cpp
-
+// problem with compiling with Clion --> modify cMakeList.txt
 struct Rock {
     int mass;
     int energy;
+
+    void printRock(ofstream* out){
+        *out << mass << " " <<  energy << endl;
+    }
 };
 
 struct City {
     int n;
     vector<Rock> rocks;
+
+    void printCity(ofstream* out){
+        *out << n << endl;
+        for (int i = 0; i < rocks.size(); ++i) {
+            *out << rocks[i].mass << " " <<  rocks[i].energy;
+        }
+        *out << endl;
+    }
 };
 
 
@@ -37,27 +49,33 @@ int getWeight(int city1, int city2) { //city 2 is the line and city 1 is the arr
 }
 
 void input() {
-    ifstream in("input.txt");
+    ifstream in("input0.txt");
+    ofstream out("output.txt");
 
     in >> nCitiesTot >> source;
     in >> nDifferentRocks >> C >> R >> vmin >> vmax;
+    //out << nCitiesTot << " " << source << endl << nDifferentRocks << " " << C << " " << R << " " << vmin << " " << vmax << endl;
 
     rocks = new Rock[nDifferentRocks];
 
     for (int i = 0; i < nDifferentRocks; ++i) {
-
         in >> rocks[i].mass >> rocks[i].energy; //mass and energy for each rock
-
+        //rocks[i].printRock(&out);
     }
 
     int rocksPerCity;
     int city;
+    cities = new City[nCitiesTot];
+
     for (int i = 0; i < nDifferentRocks; ++i) { //i-th rock
         in >> rocksPerCity;
 
+        //out << rocksPerCity << endl;
         for (int j = 0; j < rocksPerCity; ++j) {
             in >> city;
-            cities[city].rocks.push_back(rocks[i]); //= number of rock
+
+            cities[city].rocks.push_back(rocks[i]); //push(number of rock)
+            //out << city << " ";
         }
     }
 
@@ -67,7 +85,9 @@ void input() {
         weights[i] = new int[i];
         for (int j = 0; j < i; ++j) {
             in >> weights[i][j];
+            //out << weights[i][j] << " ";
         }
+        //out << endl;
     }
 }
 
