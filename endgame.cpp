@@ -110,20 +110,25 @@ int calcLb(short origin, vector<short>* choices, int cost) {
     return 0;
 }
 
-void bbTps(vector<short>* path, int cost, vector<short>* leftChoices, int n, int i) {
+void bbTsp(vector<short>* path, int cost, vector<short>* leftChoices, int n, int i) {
     vector<short> choices = *leftChoices;
-    int out, back;
-
-    for (int i = 0; i < nCitiesTot; i++) {
-
-    }
+    vector<short> minSol;
+    int minCost = 100000000; //FIXME: initial cost
+    int lb;
 
     for (auto it = choices.begin() ; it != choices.end(); ++it){
         path->push_back(*it);
         removeVector(leftChoices, *it);
 
         if(i < n){
-            auto lb = calcLb(*it, &choices, cost);
+            lb = calcLb(*it, &choices, cost);
+            if(lb < minCost){
+                bbTsp(path, cost + getWeight((short) *(it-1), (short) *it), leftChoices, n, i+1);
+            }
+        }else{
+            cost += getWeight((short) *(it), (short) path->front()); //path->front() Returns a reference to the first element in the vector.
+            vector<short> minSol = choices;
+            minCost = lb;
         }
     }
 }
