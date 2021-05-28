@@ -58,6 +58,7 @@ int getWeight(short city1, short city2);
 void input();
 void output();
 void bbTps();
+int minPathToSource(short city);
 
 //int edgeCmp(Edge x, Edge y) {
 //    return x.weight < y.weight
@@ -102,7 +103,15 @@ int calcLb(short origin, vector<short>* choices, int cost) {
             outCity = (*choices)[i];
         }
     }
-    //calculate lb cost to go back
+
+    //calculate lb cost to go back to source of the nearest cities
+    back = getWeight(origin, (*choices)[0]);
+    for (int i = 1; i < choices->size(); i++) {
+        costLocal = getWeight((*choices)[i], (*choices)[0]);
+        if(costLocal < back) {
+            back = costLocal;
+        }
+    }
 
     //calculate min future path
 
@@ -126,7 +135,7 @@ void bbTsp(vector<short>* path, int cost, vector<short>* leftChoices, int n, int
                 bbTsp(path, cost + getWeight((short) *(it-1), (short) *it), leftChoices, n, i+1);
             }
         }else{
-            cost += getWeight((short) *(it), (short) path->front()); //path->front() Returns a reference to the first element in the vector.
+            cost += getWeight((short) *(it), (short) (*path)[0]); //path->front() Returns a reference to the first element in the vector.
             vector<short> minSol = choices;
             minCost = lb;
         }
@@ -188,7 +197,7 @@ void input() {
 }
 
 // TODO fix total variables
-void output() {
+/*void output() {
     ofstream out(OUTPUT_FILE);
 
     //final glove's energy, rocks' energy and time for the journey
@@ -207,7 +216,7 @@ void output() {
         cities[i].printCity(&out);
     }
     printf("\n***\n");
-}
+}*/
 
 int calcV(int vMax, int vMin, int W, int C) {
     return vmax - W * ((vMax - vMin) / C);
