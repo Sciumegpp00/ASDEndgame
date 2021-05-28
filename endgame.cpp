@@ -58,7 +58,6 @@ int getWeight(short city1, short city2);
 void input();
 void output();
 void bbTps();
-int minPathToSource(short city);
 
 //int edgeCmp(Edge x, Edge y) {
 //    return x.weight < y.weight
@@ -89,6 +88,7 @@ void removeVector(vector<short>* v, short x) {
 int calcLb(short origin, vector<short>* choices, int cost) {
     int lb, out, back, *transfer, costLocal;
     short outCity;
+    double minLb;
 
     if(choices->empty())
         return 0; // FIXME: Add cost to come back
@@ -114,9 +114,13 @@ int calcLb(short origin, vector<short>* choices, int cost) {
     }
 
     //calculate min future path
+    minLb = cost + ((out+back + transfer[0])/2);
+    for (int i = 1; i < nCitiesTot; i++) {
+        lb = cost + ((out+back + transfer[i])/2);
+        if(lb < minLb) minLb = lb;
+    }
 
-    //lb = cost + (out+ba)
-    return 0;
+    return minLb;
 }
 
 void bbTsp(vector<short>* path, int cost, vector<short>* leftChoices, int n, int i) {
