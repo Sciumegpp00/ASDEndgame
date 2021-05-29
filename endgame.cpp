@@ -70,11 +70,23 @@ int main() {
         cout << "Error in heapsort!\n";
     }*/
 
-    bbTsp(minSol, 0, remainingBbTsp, nCitiesTot - 1, 1);
+    vector<short> sol;
+    sol.push_back(source);
 
-    
+    //FIXME help? minSol->push_back(source);
+    bbTsp(&sol, 0, remainingBbTsp, nCitiesTot-1, 1);
 
-    output();
+    for(int i = 0; i < minSol->size(); i++){
+        cout << (*minSol)[i] << " ";
+    }
+    cout << source << endl;
+    cout << "Cost: " << minCost << endl;
+
+//    for (u_long i = minSol->size()-1; i >= 0; i--) {
+//
+//    }
+
+    //output();
     return 0;
 }
 
@@ -83,7 +95,7 @@ void input() {
 
     in >> nCitiesTot >> source;
     in >> nDifferentRocks >> C >> R >> vmin >> vmax;
-    //out << nCitiesTot << " " << source << endl << nDifferentRocks << " " << C << " " << R << " " << vmin << " " << vmax << endl;
+    //cout << nCitiesTot << " " << source << endl << nDifferentRocks << " " << C << " " << R << " " << vmin << " " << vmax << endl;
 
     rocks = new Rock[nDifferentRocks];
 
@@ -109,25 +121,25 @@ void input() {
     }
 
     weights = new int *[nCitiesTot - 1]; //1 is 0
-    remainingBbTsp = new vector<short>(nCitiesTot - 1);
+    remainingBbTsp = new vector<short>();
 
 //    edgeCounts = nCitiesTot * (nCitiesTot - 1) / 2;
 //    edges = new Edge[edgeCounts];
-    minSol = new vector<short>(nCitiesTot);
+    minSol = new vector<short>(); // nCitiesTot
     minSol->push_back(source);
     minCost = 0;
 
-    for (short i = 1; i < nCitiesTot; ++i) {
+    for (short i = 0; i < nCitiesTot-1; ++i) {
         if(i != source) {
             remainingBbTsp->push_back(i);
         }
 
-        weights[i] = new int[i];
-        for (short j = 0; j < i; ++j) {
+        weights[i] = new int[i+1];
+        for (short j = 0; j < i+1; ++j) {
             in >> weights[i][j];
 
-            //creating a minimum path (random)
-            if(j == minSol->back()){ //if we're considering the distance between the previous point and another (anyone)
+            //creating a minimum path (random) // FIXME: Check if always works (i != j)
+            if(j == minSol->back() && i != j){ //if we're considering the distance between the previous point and another (anyone)
                 minCost += weights[i][j]; //sum the cost to the minimum
                 minSol->push_back(i); //add the new node in the solution
             }
@@ -136,8 +148,8 @@ void input() {
 //            edges[(i * (i - 1) / 2) + j].c2 = j;
             //cout << weights[i][j] << " ";
         }
-        //cout << endl;
     }
+    remainingBbTsp->push_back(nCitiesTot-1);
 }
 
 // TODO fix total variables
@@ -146,16 +158,22 @@ void input() {
 
     //final glove's energy, rocks' energy and time for the journey
     out << scientific << setprecision(10) << E << " "; //total glove's energy
-    out << scientific << setprecision(10) << G << " "; //total rocks enrgy
+    out << scientific << setprecision(10) << G << " "; //total rocks energy
     out << scientific << setprecision(10) << T << endl; //time used
 
     //print all taken rocks
-    for (int i = 0; i < nTakenRocks; i++) {
+    for (int i = 0; i < nTakenRocks; i++) { //FIXME n totali di pietre --> se non viene presa una viene stampato -1
         printf("%d ", rocks[i]);
     }
     printf("\n");
 
     //print the path (ordered, t0 = tN = source)
+    for(int i = 0; i < minSol->size(); i++){
+        cout << (*minSol)[i] << " ";
+    }
+    cout << source << endl;
+
+    //TODO questo sotto non serve più giusto?????
     for (int i = 0; i < nCitiesTot; i++) {
         cities[i].printCity(&out);
     }
@@ -165,9 +183,12 @@ void input() {
 int calcLb(short origin, vector<short>* remaining, int cost) {
     int out, back, transfer, costLocal;
 
+//    out = INT_MAX;
+//    back = INT_MAX;
     out = getWeight(origin, (*remaining)[0]);
     back = getWeight((*remaining)[0], source);
 //    transfer = out + getWeight((*remainingBbTsp)[0], (*remainingBbTsp)[1]);
+
     for (int i = 1; i < remaining->size(); i++) {
         // calculate minimum cost of exiting edges at this point
         costLocal = getWeight(origin, (*remaining)[i]);
@@ -195,32 +216,36 @@ int calcLb(short origin, vector<short>* remaining, int cost) {
     return cost + out + back;
 }
 
-
 void bbTsp(vector<short>* path, int cost, vector<short>* remaining, int n, int i) {
     short origin = path->back();
-    vector<short> choices = *remaining;
-    int lb, arriveCost;
+    cout << "Origin: " << origin << endl;
+    vector<short> choices(*remaining);
+    int lb;
 
     for (auto it = choices.begin() ; it != choices.end(); ++it) {
+        cost = cost + getWeight(origin, *it);
         path->push_back(*it);
+//        remaining->erase(it);
         removeVector(remaining, *it);
 
         if(i < n) {
-            arriveCost = getWeight(origin, *it);
-            lb = calcLb(*it, &choices, cost + arriveCost);
+            lb = calcLb(*it, &choices, cost);
             if(lb < minCost){
-                bbTsp(path, cost + arriveCost, remaining, n, i + 1);
+                bbTsp(path, cost, remaining, n, i + 1);
             }
         } else {
             cost += getWeight(*it, (*path)[0]); //path->front() Returns a reference to the first element in the vector.
-            if(minSol) {
-                delete minSol;
-                minSol = nullptr;
+            if(cost < minCost) {
+                if(minSol) {
+                    delete minSol;
+                    minSol = nullptr;
+                }
+                minSol = new vector<short>(*path);
+                minCost = cost;
             }
-            minSol = new vector<short>(choices);
-            minCost = lb;
         }
 
+        path->pop_back();
         remaining->push_back(*it);
     }
 }
@@ -240,8 +265,10 @@ int calcEnergy(int gloveEnergy, int totalTime){
 }
 
 void removeVector(vector<short>* v, short x) {
-    for (auto it = v->begin() ; it != v->end(); ++it) {
-        if(*it == x)
+    for (auto it = v->begin() ; it != v->end(); it++) {
+        if(*it == x) {
             v->erase(it);
+            return;
+        }
     }
 }
