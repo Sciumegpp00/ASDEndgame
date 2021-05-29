@@ -2,13 +2,13 @@
 
 #include <iostream>
 #include <stdlib.h>
-#include "lib/endgame.h"
+//#include "lib/endgame.h"
 #include <iomanip>
 #include <fstream>
 #include <vector>
 #include <set>
 
-#define INPUT_FILE "inputs/input0.txt"
+#define INPUT_FILE "../inputs/input1.txt"
 #define OUTPUT_FILE "outputs/output0.txt"
 
 using namespace std;
@@ -41,7 +41,7 @@ void removeVector(vector<short>* v, short x);
 
 short nCitiesTot;
 short nDifferentRocks;
-int nTakenRocks;
+int nTakenRocks; //FIXME non dovrebbe servire perché tanto dobbiamo stampare tutti i numeri delle pietre anche quelle non prese con -1
 short source;
 int C;
 double R;
@@ -50,6 +50,7 @@ double vmin;
 Rock *rocks;
 City *cities;
 int **weights;
+int globalMinWeight;
 int minCost; //costo di un percorso minimo a caso (il primo percorso che prendo)
 vector<short>* minSol = nullptr;
 vector<short>* remainingBbTsp = nullptr;
@@ -73,7 +74,6 @@ int main() {
     vector<short> sol;
     sol.push_back(source);
 
-    //FIXME help? minSol->push_back(source);
     bbTsp(&sol, 0, remainingBbTsp, nCitiesTot-1, 1);
 
     for(int i = 0; i < minSol->size(); i++){
@@ -83,7 +83,6 @@ int main() {
     cout << "Cost: " << minCost << endl;
 
 //    for (u_long i = minSol->size()-1; i >= 0; i--) {
-//
 //    }
 
     //output();
@@ -125,41 +124,43 @@ void input() {
 
 //    edgeCounts = nCitiesTot * (nCitiesTot - 1) / 2;
 //    edges = new Edge[edgeCounts];
-    minSol = new vector<short>(); // nCitiesTot
+    globalMinWeight = INT_MAX;
+
+    //inserimento dei pesi tra città
+    for(short i=0; i<nCitiesTot-1; i++){
+        weights[i] = new int[i+1];
+        for(short j=0; j<i+1; j++){
+            in >> weights[i][j];
+
+            if(weights[i][j] < globalMinWeight)
+                globalMinWeight = weights[i][j];
+        }
+    }
+
+    minSol = new vector<short>();
     minSol->push_back(source);
     minCost = 0;
 
-    for (short i = 0; i < nCitiesTot-1; ++i) {
-        if(i != source) {
+    for (short i = 0; i < nCitiesTot; ++i) {
+        if(i != source) { //FIXME ma se va da 0 a n-2 manca una città
             remainingBbTsp->push_back(i);
-        }
 
-        weights[i] = new int[i+1];
-        for (short j = 0; j < i+1; ++j) {
-            in >> weights[i][j];
-
-            //creating a minimum path (random) // FIXME: Check if always works (i != j)
-            if(j == minSol->back() && i != j){ //if we're considering the distance between the previous point and another (anyone)
-                minCost += weights[i][j]; //sum the cost to the minimum
-                minSol->push_back(i); //add the new node in the solution
-            }
-//            edges[(i * (i - 1) / 2) + j].weight = weights[i][j];
-//            edges[(i * (i - 1) / 2) + j].c1 = i;
-//            edges[(i * (i - 1) / 2) + j].c2 = j;
-            //cout << weights[i][j] << " ";
+            // Creating a minimum path (random)
+            minCost += getWeight(i, minSol->back()); //sum the cost to the minimum
+            minSol->push_back(i); //add the new node in the solution
         }
     }
-    remainingBbTsp->push_back(nCitiesTot-1);
+    minCost += getWeight(minSol->back(), source);
 }
 
 // TODO fix total variables
-/*void output() {
+void output() {
     ofstream out(OUTPUT_FILE);
 
     //final glove's energy, rocks' energy and time for the journey
-    out << scientific << setprecision(10) << E << " "; //total glove's energy
-    out << scientific << setprecision(10) << G << " "; //total rocks energy
-    out << scientific << setprecision(10) << T << endl; //time used
+//    out << scientific << setprecision(10) << E << " "; //total glove's energy
+//    out << scientific << setprecision(10) << G << " "; //total rocks energy
+//    out << scientific << setprecision(10) << T << endl; //time used
 
     //print all taken rocks
     for (int i = 0; i < nTakenRocks; i++) { //FIXME n totali di pietre --> se non viene presa una viene stampato -1
@@ -174,22 +175,23 @@ void input() {
     cout << source << endl;
 
     //TODO questo sotto non serve più giusto?????
-    for (int i = 0; i < nCitiesTot; i++) {
-        cities[i].printCity(&out);
-    }
+//    for (int i = 0; i < nCitiesTot; i++) {
+//        cities[i].printCity(&out);
+//    }
     printf("\n***\n");
-}*/
+}
 
 int calcLb(short origin, vector<short>* remaining, int cost) {
-    int out, back, transfer, costLocal;
+    int out, back, transfer, costLocal, minTransferOut, localTransferOut;
 
-//    out = INT_MAX;
-//    back = INT_MAX;
-    out = getWeight(origin, (*remaining)[0]);
-    back = getWeight((*remaining)[0], source);
+    out = INT_MAX;
+    back = INT_MAX;
+//    transfer = INT_MAX;
+//    out = getWeight(origin, (*remaining)[0]);
+//    back = getWeight((*remaining)[0], source);
 //    transfer = out + getWeight((*remainingBbTsp)[0], (*remainingBbTsp)[1]);
 
-    for (int i = 1; i < remaining->size(); i++) {
+    for (int i = 0; i < remaining->size(); i++) {
         // calculate minimum cost of exiting edges at this point
         costLocal = getWeight(origin, (*remaining)[i]);
         if(costLocal < out) {
@@ -198,12 +200,15 @@ int calcLb(short origin, vector<short>* remaining, int cost) {
 
         // Calculate for each city the best way to pass into it (best duo entry + exit)
         // origin --> qualsiasi nodo + qualsiasi nodo
-//        int bestExit = weights[(*remainingBbTsp)[i]][(*remainingBbTsp)[i-1]];
-//        for (int j = 0; j < remainingBbTsp->size(); j++){ //consider the remainingBbTsp nodes
+//        minTransferOut = INT_MAX;
+//        for (int j = 0; j < remaining->size(); j++){ //consider the remainingBbTsp nodes
 //            if(i != j){
-//
+//                localTransferOut = getWeight((*remaining)[i], (*remaining)[j]);
+//                if(localTransferOut < minTransferOut)
+//                    minTransferOut = localTransferOut;
 //            }
 //        }
+//        transfer += minTransferOut;
 
         //calculate lb cost to go back to source of the nearest cities
         costLocal = getWeight((*remaining)[i], source);
@@ -212,28 +217,29 @@ int calcLb(short origin, vector<short>* remaining, int cost) {
         }
     }
 
+    transfer = (globalMinWeight * remaining->size());
     // TODO: Try to remove /2 for remainingBbTsp nodes > 10 or 15 for example
-    return cost + out + back;
+//    return cost + ((out + back + transfer) / 2);
+    return cost + out + back + transfer;
 }
 
 void bbTsp(vector<short>* path, int cost, vector<short>* remaining, int n, int i) {
     short origin = path->back();
-    cout << "Origin: " << origin << endl;
     vector<short> choices(*remaining);
-    int lb;
+    int lb, localCost;
 
     for (auto it = choices.begin() ; it != choices.end(); ++it) {
-        cost = cost + getWeight(origin, *it);
+        localCost = cost + getWeight(origin, *it);
         path->push_back(*it);
-//        remaining->erase(it);
         removeVector(remaining, *it);
 
         if(i < n) {
-            lb = calcLb(*it, &choices, cost);
+            lb = calcLb(*it, remaining, localCost);
             if(lb < minCost){
-                bbTsp(path, cost, remaining, n, i + 1);
+                bbTsp(path, localCost, remaining, n, i + 1);
             }
         } else {
+            cost = localCost;
             cost += getWeight(*it, (*path)[0]); //path->front() Returns a reference to the first element in the vector.
             if(cost < minCost) {
                 if(minSol) {
