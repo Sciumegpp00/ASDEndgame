@@ -9,13 +9,24 @@
 #include <set>
 
 #define INPUT_FILE "../inputs/input1.txt"
-#define OUTPUT_FILE "outputs/output0.txt"
+#define OUTPUT_FILE "../outputs/output0.txt"
 
 using namespace std;
 
 struct Rock {
     int mass;
     int energy;
+    int availability;
+    float ratio;
+    short id;
+
+    //variable for rapport velocity/distance (depends from path)
+
+    /*Rock(int m, int e){
+        mass = m;
+        energy = e;
+        k = energy/mass;
+    }*/
 
     void printRock(ofstream *out) {
         *out << mass << " " << energy << endl;
@@ -24,6 +35,12 @@ struct Rock {
 
 struct City {
     vector<Rock> rocks;
+};
+
+struct CitySol {
+    short city;
+    short rock;
+    int distanceFromEnd;
 };
 
 //struct Edge {
@@ -37,6 +54,11 @@ void input();
 void output();
 void bbTsp(vector<short>* path, int cost, vector<short>* remaining, int n, int i);
 void removeVector(vector<short>* v, short x);
+void simpleMinPath(vector<short>* sol);
+void bestRocksForPath(vector<CitySol>* path);
+void printMinSol(vector<short>* minSol);
+void printMinCost(int minCost);
+void printSolution();
 
 
 short nCitiesTot;
@@ -49,6 +71,8 @@ double vmax;
 double vmin;
 Rock *rocks;
 City *cities;
+CitySol *solution;
+//TODO: idea: CitySol *solution che contiene in ordine di id citta (seguendo percorso minimo) l'id città e la roccia presa (o non presa) --> quindi è gran parte della soluzione finale
 int **weights;
 int globalMinWeight;
 int minCost; //costo di un percorso minimo a caso (il primo percorso che prendo)
@@ -65,25 +89,18 @@ vector<short>* remainingBbTsp = nullptr;
 
 int main() {
     input();
-    /*
-    auto err = heapsort(edges, sizeof(Edge), edgeCounts, reinterpret_cast<int (*)(const void *, const void *)>(&edgeCmp));
-    if(err == -1) {
-        cout << "Error in heapsort!\n";
-    }*/
 
     vector<short> sol;
-    sol.push_back(source);
+    simpleMinPath(&sol);
 
-    bbTsp(&sol, 0, remainingBbTsp, nCitiesTot-1, 1);
+    //bbTsp(&sol, 0, remainingBbTsp, nCitiesTot-1, 1);
 
-    for(int i = 0; i < minSol->size(); i++){
-        cout << (*minSol)[i] << " ";
-    }
-    cout << source << endl;
-    cout << "Cost: " << minCost << endl;
+    //print path
+    printMinSol(minSol);
+    //print cost5
+    printMinCost(minCost);
 
-//    for (u_long i = minSol->size()-1; i >= 0; i--) {
-//    }
+    bestRocksForPath(minSol);
 
     //output();
     return 0;
@@ -99,19 +116,20 @@ void input() {
     rocks = new Rock[nDifferentRocks];
 
     for (int i = 0; i < nDifferentRocks; ++i) {
+        rocks[i].id = i;
         in >> rocks[i].mass >> rocks[i].energy; //mass and energy for each rock
+        rocks[i].ratio = rocks[i].energy/rocks[i].mass;
         //rocks[i].printRock(&cout);
     }
 
-    int rocksPerCity;
     int city;
     cities = new City[nCitiesTot];
 
     for (int i = 0; i < nDifferentRocks; ++i) { //i-th rock
-        in >> rocksPerCity;
-        //cout << rocksPerCity << endl;
+        in >> rocks[i].availability;
+        //cout << rocks[i].availability << endl;
 
-        for (int j = 0; j < rocksPerCity; ++j) {
+        for (int j = 0; j < rocks[i].availability; ++j) {
             in >> city;
 
             cities[city].rocks.push_back(rocks[i]);
@@ -136,21 +154,6 @@ void input() {
                 globalMinWeight = weights[i][j];
         }
     }
-
-    minSol = new vector<short>();
-    minSol->push_back(source);
-    minCost = 0;
-
-    for (short i = 0; i < nCitiesTot; ++i) {
-        if(i != source) { //FIXME ma se va da 0 a n-2 manca una città
-            remainingBbTsp->push_back(i);
-
-            // Creating a minimum path (random)
-            minCost += getWeight(i, minSol->back()); //sum the cost to the minimum
-            minSol->push_back(i); //add the new node in the solution
-        }
-    }
-    minCost += getWeight(minSol->back(), source);
 }
 
 // TODO fix total variables
@@ -169,6 +172,7 @@ void output() {
     printf("\n");
 
     //print the path (ordered, t0 = tN = source)
+    //printMinSol(*minSol);
     for(int i = 0; i < minSol->size(); i++){
         cout << (*minSol)[i] << " ";
     }
@@ -256,6 +260,76 @@ void bbTsp(vector<short>* path, int cost, vector<short>* remaining, int n, int i
     }
 }
 
+void simpleMinPath(vector<CitySol>* sol, vector<short> remaining) { //first call of function: sol with only source inside
+    //Random min sol
+//    minSol = new vector<short>();
+//    minSol->push_back(source);
+//    minCost = 0;
+//
+//    for (short i = 0; i < nCitiesTot; ++i) {
+//        if(i != source) {
+//            remainingBbTsp->push_back(i);
+//
+//            // Creating a minimum path (random)
+//            minCost += getWeight(i, minSol->back()); //sum the cost to the minimum
+//            minSol->push_back(i); //add the new node in the solution
+//        }
+//    }
+//    minCost += getWeight(minSol->back(), source);
+
+    // remaining = vector<short> --> tutti tranne source
+
+    //minimum path for each city
+    if(sol->size() < nCitiesTot){
+        CitySol minCity;
+        short presentCity = sol->back().city;
+        int presentWeight, minWeight = getWeight(sol->front().city, sol->back().city);
+
+        for (short i = 0; i < nCitiesTot; i++){
+            presentWeight = getWeight(i, presentCity);
+            if(presentWeight < minWeight){
+                minCity.city = i;
+                minWeight = presentWeight;
+            }
+        }
+
+        sol->push_back(minCity);
+        minCost += minWeight;
+        simpleMinPath(sol);
+    }
+
+
+}
+
+void bestRocksForPath(vector<CitySol>* path) {
+    u_long i;
+    CitySol* city;
+    vector<Rock>* cityRocks;
+    Rock* maxRock;
+    int distance = getWeight(source, path->back().city);
+
+    for (i = path->size()-1; i >= 0; i--) {
+        city = &((*path)[i]);
+        cityRocks = &(cities[city->city].rocks);
+
+        city->distanceFromEnd = distance;
+
+        if(cityRocks->empty()) {
+            city->rock = -1;
+            continue;
+        }
+
+        // Find maximum ratio for all rock of the city
+        maxRock = &(*cityRocks->begin());
+        for (auto j = cityRocks->begin() + 1; j != cityRocks->end(); j++) {
+            if(j->ratio > maxRock->ratio)
+                maxRock = &(*j);
+        }
+
+        city->rock = maxRock->id;
+    }
+}
+
 int getWeight(short city1, short city2) { //city 2 is the line and city 1 is the arrival city (bigger)
     return city1 < city2
            ? weights[city2 - 1][city1]
@@ -277,4 +351,28 @@ void removeVector(vector<short>* v, short x) {
             return;
         }
     }
+}
+
+void printMinSol(vector<short>* minSol){
+    cout << "\nPercorso minimo:\n";
+    for(int i = 0; i < minSol->size(); i++){
+        cout << (*minSol)[i] << " ";
+    }
+    cout << source << endl;
+}
+
+void printMinCost(int minCost){
+    cout << "\nCosto: " << minCost << endl;
+}
+
+void printSolution(){
+    cout << "\nPietre: \n";
+    for(int i=0; i<nCitiesTot/*solution->size()*/; i++){
+        cout << solution[i].rock << " ";
+    }
+    cout << "\n Percorso: \n";
+    for(int i=nCitiesTot/*solution->size()*/; i++){
+        cout << solution[i].city << " ";
+    }
+    cout << source << endl;
 }
