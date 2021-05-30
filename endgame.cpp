@@ -54,7 +54,7 @@ void input();
 void output();
 void bbTsp(vector<short>* path, int cost, vector<short>* remaining, int n, int i);
 void removeVector(vector<short>* v, short x);
-void simpleMinPath(vector<short>* sol);
+void simpleMinPath(vector<CitySol>* sol, vector<short>* remaining);
 void bestRocksForPath(vector<CitySol>* path);
 void printMinSol(vector<short>* minSol);
 void printMinCost(int minCost);
@@ -90,14 +90,24 @@ vector<short>* remainingBbTsp = nullptr;
 int main() {
     input();
 
-    vector<short> sol;
-    simpleMinPath(&sol);
+    vector<short> allCities;
+    for (short i = 0; i < nCitiesTot; ++i) {
+        if(i != source)
+            allCities.push_back(i);
+    }
+
+    CitySol sourceSol;
+    sourceSol.city = source;
+    solution = new vector<CitySol>;
+    solution->push_back(sourceSol);
+    simpleMinPath(solution, &allCities);
 
     //bbTsp(&sol, 0, remainingBbTsp, nCitiesTot-1, 1);
 
     //print path
     printMinSol(minSol);
     //print cost5
+    minCost += getWeight(source, solution->back().city);
     printMinCost(minCost);
 
     bestRocksForPath(minSol);
@@ -166,10 +176,10 @@ void output() {
 //    out << scientific << setprecision(10) << T << endl; //time used
 
     //print all taken rocks
-    for (int i = 0; i < nTakenRocks; i++) { //FIXME n totali di pietre --> se non viene presa una viene stampato -1
-        printf("%d ", rocks[i]);
-    }
-    printf("\n");
+//    for (int i = 0; i < nTakenRocks; i++) { //FIXME n totali di pietre --> se non viene presa una viene stampato -1
+//        printf("%d ", rocks[i]);
+//    }
+//    printf("\n");
 
     //print the path (ordered, t0 = tN = source)
     //printMinSol(*minSol);
@@ -260,7 +270,7 @@ void bbTsp(vector<short>* path, int cost, vector<short>* remaining, int n, int i
     }
 }
 
-void simpleMinPath(vector<CitySol>* sol, vector<short> remaining) { //first call of function: sol with only source inside
+void simpleMinPath(vector<CitySol>* sol, vector<short>* remaining) { //first call of function: sol with only source inside and remaining with all but source
     //Random min sol
 //    minSol = new vector<short>();
 //    minSol->push_back(source);
@@ -283,21 +293,53 @@ void simpleMinPath(vector<CitySol>* sol, vector<short> remaining) { //first call
     if(sol->size() < nCitiesTot){
         CitySol minCity;
         short presentCity = sol->back().city;
-        int presentWeight, minWeight = getWeight(sol->front().city, sol->back().city);
+        int presentWeight, minWeight;
+        if(sol->back().city == sol->front().city && sol->back().city == 0){
+            minWeight = INT16_MAX;
+        }else{
+            minWeight = getWeight(sol->back().city, remaining->back());
+            minCity.city = remaining->back();
+        }
 
-        for (short i = 0; i < nCitiesTot; i++){
-            presentWeight = getWeight(i, presentCity);
+        for (auto it = remaining->begin() ; it != remaining->end(); ++it) {
+            presentWeight = getWeight(*it, presentCity);
             if(presentWeight < minWeight){
-                minCity.city = i;
+                minCity.city = *it;
                 minWeight = presentWeight;
             }
         }
 
         sol->push_back(minCity);
+        removeVector(remaining, minCity.city);
         minCost += minWeight;
-        simpleMinPath(sol);
+        simpleMinPath(sol, remaining);
     }
 
+    //iterative
+    /*for (auto itSol = sol->begin() ; itSol != sol->end(); ++itSol) {
+        CitySol minCity;
+        short presentCity = (*itSol).city; //thoughts: adding a city the value is the new city
+        //reality: the new city is a random number (probably takes the sol->end)
+        int presentWeight, minWeight;
+        if(itSol->city == sol->front().city && itSol->city == 0){
+            minWeight = INT16_MAX;
+        }else{
+            minWeight = getWeight(itSol->city, sol->front().city);
+            minCity = sol->front();
+        }
+
+        for (auto itRemaining = remaining->begin() ; itRemaining != remaining->end(); ++itRemaining) {
+            presentWeight = getWeight(*itRemaining, presentCity);
+            if(presentWeight < minWeight){
+                minCity.city = *itRemaining;
+                minWeight = presentWeight;
+            }
+        }
+
+        sol->push_back(minCity);
+        removeVector(remaining, minCity.city);
+        minCost += minWeight;
+    }*/
 
 }
 
@@ -362,7 +404,7 @@ void printMinSol(vector<short>* minSol){
 }
 
 void printMinCost(int minCost){
-    cout << "\nCosto: " << minCost << endl;
+    cout << "\nCosto: " << minCost<< endl;
 }
 
 void printSolution(){
