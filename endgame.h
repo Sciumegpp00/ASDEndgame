@@ -1,6 +1,8 @@
 #ifndef ENDGAME_H
 #define ENDGAME_H
 
+#define DEBUG
+
 #ifdef __cplusplus
 // C++ code
 using namespace std;
