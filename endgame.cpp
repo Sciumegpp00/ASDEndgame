@@ -306,7 +306,7 @@ void chooseRocksToTake() {
     int capacityLeft = C, taken = 0;
 
     qsort(rocksRatio, nDifferentRocks, sizeof(RockRatio),
-          reinterpret_cast<__compar_fn_t>(minRockRatioComparator));
+          reinterpret_cast<int (*)(const void *, const void *)>(minRockRatioComparator));
 
     for (int i = 0; i < nDifferentRocks && capacityLeft != 0; ++i) {
         if(rocks[rocksRatio[i].id].mass > capacityLeft)
