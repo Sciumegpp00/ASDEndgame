@@ -19,12 +19,17 @@
 using namespace std;
 
 struct Rock {
-    short id;
     int mass;
     int energy;
     float ratio;
+    bool toTake = false;
     short availability;
     short *cities;
+};
+
+struct RockRatio {
+    short id;
+    float ratio;
 };
 
 bool operator>(const Rock &r1, const Rock &r2);
@@ -54,6 +59,7 @@ double calcSpeed(int W);
 double calcEnergy(int rocksEnergy, double totalTime);
 void findRocks(CitySol *citySol, short *rocksSol, int *capacityLeft);
 void calcFinalResources(CitySol *sol, double *totalTime, double *totalEnergy, int *rocksEnergy);
+void chooseRocksToTake();
 
 
 short nCitiesTot;
@@ -66,34 +72,53 @@ double vmin;
 Rock *rocks;
 City *cities;
 int **weights;
+RockRatio *rocksRatio;
 //int globalMinWeight;
 //int minCost; //costo di un percorso minimo a caso (il primo percorso che prendo)
 //vector<short>* minSol = nullptr;
 //vector<short>* remainingBbTsp = nullptr;
 
 
-bool operator>(const Rock &r1, const Rock &r2) {
-    return r1.ratio > r2.ratio;
-}
+//bool operator>(const Rock &r1, const Rock &r2) {
+//    return r1.ratio < r2.ratio;
+//}
 
-int maxRockComparator(const Rock *r1, const Rock *r2) {
-    return r1->ratio > r2->ratio
+int minRockRatioComparator(const RockRatio *r1, const RockRatio *r2) {
+    return r1->ratio < r2->ratio
            ? -1
            : 1;
 }
 
 
+
 int main() {
+//    Rock test[5];
+//
+//    test[0].id = 0; test[0].ratio = 4.6;
+//    test[1].id = 1; test[1].ratio = 2.3;
+//    test[2].id = 2; test[2].ratio = 10.55;
+//    test[3].id = 3; test[3].ratio = 4.9;
+//    test[4].id = 4; test[4].ratio = 6.8;
+//
+//    for (int i = 0; i < 5; ++i) {
+//        cout << test[i].ratio << " ";
+//    }
+//    cout << endl;
+//
+//    qsort(test, 10, sizeof(Rock),
+//          reinterpret_cast<int (*)(const void *, const void *)>(minRockRatioComparator));
+
     CitySol *solution;
     short *rocksSolution;
     int cost, rocksEnergy;
-    double totalTime, totalEnergy;
+    double totalTime = 0, totalEnergy = 0;
 #ifdef DEBUG
     clock_t startTime, afterInput, afterSolution, afterFinalCalc;
     startTime = clock();
 #endif // DEBUG
 
     input();
+    chooseRocksToTake();
 
 #ifdef DEBUG
     afterInput = clock();
@@ -126,6 +151,7 @@ int main() {
 #endif // DEBUG
 
     return 0;
+
 }
 
 void input() {
@@ -139,15 +165,23 @@ void input() {
     in >> nDifferentRocks >> C >> R >> vmin >> vmax;
 
     rocks = new Rock[nDifferentRocks];
+    rocksRatio = new RockRatio[nDifferentRocks];
 
-    for (int i = 0; i < nDifferentRocks; ++i) {
-        rocks[i].id = i;
+    for (short i = 0; i < nDifferentRocks; ++i) {
         in >> rocks[i].mass >> rocks[i].energy; //mass and energy for each rockId
-        rocks[i].ratio = (float) rocks[i].energy / rocks[i].mass;
+        rocks[i].ratio = (float) rocks[i].mass / (float) rocks[i].energy;
+        //vettore rocce id ratio
+        rocksRatio[i].id = i;
+        rocksRatio[i].ratio = rocks[i].ratio;
 //        cout << "rockId n " << rocks[i].id << " mass: " << rocks[i].mass << " energy: " << rocks[i].energy << " ratio: " << rocks[i].ratio << endl;
     }
 
 #ifdef DEBUG
+    for (int i = 0; i < nDifferentRocks; ++i) {
+        cout << rocksRatio[i].ratio << " ";
+    }
+
+    cout << endl;
     afterRocksInput = clock();
 #endif // DEBUG
 
@@ -191,7 +225,7 @@ void input() {
 
 //    for (int i = 0; i < nCitiesTot; ++i) {
 //        qsort(cities[i].rocks, cities[i].nRocks, sizeof(short),
-//              reinterpret_cast<int (*)(const void *, const void *)>(maxRockComparator));
+//              reinterpret_cast<int (*)(const void *, const void *)>(minRockRatioComparator));
 //    }
 
 #ifdef DEBUG
@@ -268,6 +302,24 @@ void printSolution(CitySol *solution, short *orderedRocks, double gloveEnergy, d
     cout << "\n***";
 }
 
+void chooseRocksToTake() {
+    int capacityLeft = C, taken = 0;
+
+    qsort(rocksRatio, nDifferentRocks, sizeof(RockRatio),
+          reinterpret_cast<__compar_fn_t>(minRockRatioComparator));
+
+    for (int i = 0; i < nDifferentRocks && capacityLeft != 0; ++i) {
+        if(rocks[rocksRatio[i].id].mass > capacityLeft)
+            continue;
+
+        capacityLeft -= rocks[rocksRatio[i].id].mass;
+        rocks[rocksRatio[i].id].toTake = true;
+        taken++;
+    }
+
+    cout << "Taken rocks: " << taken << endl;
+}
+
 int simpleMinPath(CitySol *sol, short *rocksSol) { //int rocksWeight, int C
     short i, j, swap, minCityIndex;
     int minDistance, localDistance, cost = 0, capacityLeft = C;
@@ -342,16 +394,28 @@ void findRocks(CitySol *citySol, short *rocksSol, int *capacityLeft) { //vector<
 //    }
 
 
-
+    Rock* localRock;
+    float localRatio;
     short maxRockId;
     float maxRockRatio = 0;
 
     for (int i = 0; i < nRocks; ++i){
-        if(*capacityLeft - rocks[cityRocks[i]].mass < 0 || rocksSol[cityRocks[i]] != -1)
+        localRock = rocks + cityRocks[i];
+//        if(*capacityLeft - rocks[cityRocks[i]].mass < 0 || rocksSol[cityRocks[i]] != -1)
+        if(!localRock->toTake)
             continue;
-        if(rocks[cityRocks[i]].ratio > maxRockRatio) {
+
+        if(localRock->availability < 20) {
             maxRockId = cityRocks[i];
-            maxRockRatio = rocks[cityRocks[i]].ratio;
+            maxRockRatio = localRatio;
+            break;
+        }
+
+        localRatio = localRock->ratio / (float) localRock->availability;
+        localRock->availability--;
+        if(localRatio > maxRockRatio) {
+            maxRockId = cityRocks[i];
+            maxRockRatio = localRatio;
         }
     }
 
@@ -359,8 +423,9 @@ void findRocks(CitySol *citySol, short *rocksSol, int *capacityLeft) { //vector<
         citySol->rockId = -1;
     else {
         citySol->rockId = maxRockId;
-        rocksSol[citySol->rockId] = citySol->cityId;
-        *capacityLeft -= rocks[citySol->rockId].mass;
+        rocksSol[maxRockId] = citySol->cityId;
+        *capacityLeft -= rocks[maxRockId].mass;
+        rocks[maxRockId].toTake = false;
     }
 }
 
@@ -373,6 +438,7 @@ void calcFinalResources(CitySol *sol, double *totalTime, double *totalEnergy, in
     double speed, time;
 
     *rocksEnergy = 0;
+    *totalTime = 0;
 
     for (short i = 0; i < nCitiesTot; i++) {
         if (sol[i].rockId != -1) {
